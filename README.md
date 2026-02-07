@@ -39,14 +39,14 @@ graph TB
     FILES --> NORM
     IMAGES --> NORM
     NORM --> CHUNK
-    NORM -.->|optional| GEX --> NEO4J
     CHUNK --> SQLITE
     CHUNK --> EMB --> QDRANT
+    NORM -.->|"optional (--graph)"| GEX --> NEO4J
 
     QDRANT --> VR
-    NEO4J --> GR
+    NEO4J -.-> GR
     VR --> FUSION
-    GR --> FUSION
+    GR -.-> FUSION
     FUSION --> ENGINE
 
     ENGINE --> CLI
