@@ -1,0 +1,124 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Brain — default configuration
+#
+# Override any value by creating a config.yaml in the project root,
+# or via environment variables with the BRAIN_ prefix (e.g. BRAIN_ACTIVE_PROFILE).
+# Priority: env vars > .env > config.yaml > config.default.yaml
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Which LLM profile to use (must match a key under "profiles")
+active_profile: default
+
+# ──────────────────────────────────────────────────────────────────────────────
+# LLM Profiles — provider/model strings are passed straight to LiteLLM
+# ──────────────────────────────────────────────────────────────────────────────
+profiles:
+  default:  # Anthropic direct API
+    chat_model: "anthropic/claude-sonnet-4-5-20250929"
+    embed_model: "voyage/voyage-4-lite"
+    embed_dim: 1024
+    graph_extract_model: "anthropic/claude-haiku-4-5-20251001"       # main graph extraction LLM
+    graph_extract_small_model: "anthropic/claude-haiku-4-5-20251001" # lightweight graph helper
+    vision_model: "anthropic/claude-sonnet-4-5-20250929"             # image transcription
+    temperature: 0.1
+    max_tokens: 4096
+
+  bedrock:  # AWS Bedrock
+    chat_model: "bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0"
+    embed_model: "bedrock/amazon.titan-embed-text-v2:0"
+    embed_dim: 1024
+    graph_extract_model: "bedrock/anthropic.claude-haiku-4-5-20251001-v1:0"
+    graph_extract_small_model: "bedrock/anthropic.claude-haiku-4-5-20251001-v1:0"
+    vision_model: "bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0"
+    temperature: 0.1
+    max_tokens: 4096
+
+  openai:  # OpenAI API
+    chat_model: "openai/gpt-5.2"
+    embed_model: "openai/text-embedding-3-small"
+    embed_dim: 1536
+    graph_extract_model: "openai/gpt-5.2"
+    graph_extract_small_model: "openai/gpt-5-mini"
+    vision_model: "openai/gpt-5.2"
+    temperature: 0.1
+    max_tokens: 4096
+
+  local:  # Ollama (local models, no API keys needed)
+    chat_model: "ollama/llama3.1:70b"
+    embed_model: "ollama/nomic-embed-text"
+    embed_dim: 768
+    graph_extract_model: "ollama/llama3.1:70b"
+    graph_extract_small_model: "ollama/llama3.1:8b"
+    vision_model: "ollama/llava:13b"
+    temperature: 0.1
+    max_tokens: 4096
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Neo4j — knowledge graph storage (used by Graphiti)
+# ──────────────────────────────────────────────────────────────────────────────
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "memgraph"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Qdrant — vector store (embedded mode, no server required)
+# ──────────────────────────────────────────────────────────────────────────────
+qdrant:
+  path: "./data/qdrant"          # on-disk storage directory
+  collection: "brain_chunks"     # Qdrant collection name
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Docstore — SQLite database for document text and metadata
+# ──────────────────────────────────────────────────────────────────────────────
+docstore:
+  path: "./data/docstore.db"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Watched folders — auto-ingested when "Ingest watched folders" is clicked
+# ──────────────────────────────────────────────────────────────────────────────
+watched_folders:
+  - "./data/watched"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Chunker — text splitting for vector retrieval
+# ──────────────────────────────────────────────────────────────────────────────
+chunker:
+  chunk_size: 512    # chars per chunk (small for precise retrieval)
+  chunk_overlap: 64  # overlap between consecutive chunks
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Chat — retrieval defaults (UI sliders override per-session)
+# ──────────────────────────────────────────────────────────────────────────────
+chat:
+  top_k: 5              # number of vector chunks to retrieve
+  graph_results: 10     # number of graph facts to retrieve
+  snippet_length: 300   # max chars per citation snippet
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Graph — Graphiti knowledge graph extraction settings
+# ──────────────────────────────────────────────────────────────────────────────
+graph:
+  group_id: "brain"       # Graphiti episode group identifier
+  num_results: 10         # default graph search results
+  episode_size: 100000    # max chars per Graphiti episode (~25K tokens)
+  max_coroutines: 3       # max parallel LLM calls inside Graphiti (default 20 is too aggressive)
+  episode_delay: 15       # seconds to wait between episodes for rate limit cooldown
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Prompts — system prompts for the chat engine
+# ──────────────────────────────────────────────────────────────────────────────
+prompts:
+  system_prompt: |
+    You are a helpful assistant with access to a personal knowledge base.
+    Answer the user's question based on the provided context excerpts.
+    Always cite your sources using [D1], [D2], etc. for document excerpts.
+    If the context doesn't contain enough information, say so clearly.
+  system_prompt_fusion: |
+    You are a helpful assistant with access to a personal knowledge base.
+    You have two sources of information:
+    1. Document excerpts (cited as [D1], [D2], etc.)
+    2. Knowledge graph facts (cited as [G1], [G2], etc.)
+
+    Answer the user's question using BOTH sources when relevant.
+    Always cite your sources with the appropriate notation.
