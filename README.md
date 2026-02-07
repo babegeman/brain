@@ -392,7 +392,3 @@ pytest --cov=brain
 ruff check src/ tests/
 ruff format src/ tests/
 ```
-
-## License
-
-Private project — not currently licensed for redistribution.
