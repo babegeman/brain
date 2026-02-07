@@ -15,7 +15,7 @@ graph TB
         NORM[Normalizers]
         CHUNK[Chunker<br/>512 chars, 64 overlap]
         EMB[Embeddings<br/>Voyage AI]
-        GEX[Graph Extraction<br/>Claude Haiku<br/>~100K char episodes]
+        GEX[Graph Extraction<br/>Graphiti + Claude Haiku]
     end
 
     subgraph Storage
@@ -41,12 +41,12 @@ graph TB
     NORM --> CHUNK
     CHUNK --> SQLITE
     CHUNK --> EMB --> QDRANT
-    NORM -.->|"optional (--graph)"| GEX --> NEO4J
+    NORM -->|full text| GEX --> NEO4J
 
     QDRANT --> VR
-    NEO4J -.-> GR
+    NEO4J --> GR
     VR --> FUSION
-    GR -.-> FUSION
+    GR --> FUSION
     FUSION --> ENGINE
 
     ENGINE --> CLI
