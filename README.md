@@ -13,9 +13,9 @@ graph TB
 
     subgraph Ingestion Pipeline
         NORM[Normalizers]
-        CHUNK[Chunker<br/>512 tokens, 64 overlap]
+        CHUNK[Chunker<br/>512 chars, 64 overlap]
         EMB[Embeddings<br/>Voyage AI]
-        GEX[Graph Extraction<br/>Claude Haiku]
+        GEX[Graph Extraction<br/>Claude Haiku<br/>~100K char episodes]
     end
 
     subgraph Storage
@@ -39,9 +39,9 @@ graph TB
     FILES --> NORM
     IMAGES --> NORM
     NORM --> CHUNK
+    NORM -.->|optional| GEX --> NEO4J
     CHUNK --> SQLITE
     CHUNK --> EMB --> QDRANT
-    CHUNK --> GEX --> NEO4J
 
     QDRANT --> VR
     NEO4J --> GR
@@ -64,17 +64,22 @@ sequenceDiagram
     participant G as GraphClient (Neo4j)
     participant L as LLM (Claude)
 
-    U->>P: ingest file.docx
+    U->>P: ingest file.docx [--graph]
     P->>P: Normalize (extract text)
-    P->>P: Chunk (512 tokens)
+    P->>P: Chunk (512 chars, 64 overlap)
     P->>D: Store document + chunks
     P->>L: embed(chunk_texts)
     L-->>P: vectors[]
     P->>V: upsert(chunks, vectors)
-    P->>G: add_episode(doc_text)
-    G->>L: Extract entities & relations
-    L-->>G: Knowledge triples
-    G->>G: Store in Neo4j
+
+    opt --graph flag enabled
+        P->>G: add_document(doc) → split into ~100K char episodes
+        loop Each episode
+            G->>L: Extract entities & relations (Haiku)
+            L-->>G: Entities, edges, communities
+            G->>G: Deduplicate & store in Neo4j
+        end
+    end
 
     U->>L: "What does Project X cover?"
     Note over P: Fusion Retrieval
