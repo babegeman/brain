@@ -99,11 +99,13 @@ chat:
 # Graph — Graphiti knowledge graph extraction settings
 # ──────────────────────────────────────────────────────────────────────────────
 graph:
-  group_id: "brain"       # Graphiti episode group identifier
-  num_results: 10         # default graph search results
-  episode_size: 100000    # max chars per Graphiti episode (~25K tokens)
-  max_coroutines: 3       # max parallel LLM calls inside Graphiti (default 20 is too aggressive)
-  episode_delay: 15       # seconds to wait between episodes for rate limit cooldown
+  group_id: "brain"             # Graphiti episode group identifier
+  num_results: 10               # default graph search results
+  episode_size: 50000           # max chars per Graphiti episode (~12.5K tokens)
+  max_coroutines: 1             # fully sequential LLM calls inside Graphiti (default 20 is too aggressive)
+  episode_delay: 30             # seconds to wait between episodes for rate limit cooldown
+  max_episode_retries: 3        # retries per episode when Graphiti exhausts its internal retries
+  episode_retry_delay: 90       # seconds to wait before retrying a rate-limited episode
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Prompts — system prompts for the chat engine

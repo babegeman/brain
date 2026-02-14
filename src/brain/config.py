@@ -65,9 +65,11 @@ class GraphConfig(BaseModel):
 
     group_id: str = "brain"
     num_results: int = 10
-    episode_size: int = 100_000  # max chars per Graphiti episode (~25K tokens)
-    max_coroutines: int = 3  # max parallel LLM calls inside Graphiti (default 20 is too aggressive)
-    episode_delay: int = 15  # seconds to wait between episodes for rate limit cooldown
+    episode_size: int = 50_000  # max chars per Graphiti episode (~12.5K tokens)
+    max_coroutines: int = 1  # fully sequential LLM calls inside Graphiti (default 20 is too aggressive)
+    episode_delay: int = 30  # seconds to wait between episodes for rate limit cooldown
+    max_episode_retries: int = 3  # retries per episode when Graphiti exhausts its internal retries
+    episode_retry_delay: int = 90  # seconds to wait before retrying a rate-limited episode
 
 
 class PromptsConfig(BaseModel):

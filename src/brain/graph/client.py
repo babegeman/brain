@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timezone
 
 from graphiti_core import Graphiti
+from graphiti_core.llm_client import RateLimitError
 from graphiti_core.nodes import EpisodeType
 
 from brain.config import get_settings
@@ -116,28 +117,57 @@ class GraphClient:
                 log.info("Waiting %ds between episodes (rate limit cooldown)...", delay)
                 await asyncio.sleep(delay)
 
-            try:
-                results = await self._graphiti.add_episode(
-                    name=name,
-                    episode_body=block,
-                    source=EpisodeType.text,
-                    source_description=desc,
-                    reference_time=ref_time,
-                    group_id=group_id,
-                )
-                total_nodes += len(results.nodes)
-                total_edges += len(results.edges)
-                log.info(
-                    "Graph extraction episode %d/%d: %d nodes, %d edges",
-                    i + 1,
-                    total_episodes,
-                    len(results.nodes),
-                    len(results.edges),
-                )
-            except Exception:
-                log.exception(
-                    "Graph extraction failed for episode %d/%d (non-fatal)", i + 1, total_episodes
-                )
+            max_retries = cfg.graph.max_episode_retries
+            retry_delay = cfg.graph.episode_retry_delay
+            succeeded = False
+
+            for attempt in range(1, max_retries + 1):
+                try:
+                    results = await self._graphiti.add_episode(
+                        name=name,
+                        episode_body=block,
+                        source=EpisodeType.text,
+                        source_description=desc,
+                        reference_time=ref_time,
+                        group_id=group_id,
+                    )
+                    total_nodes += len(results.nodes)
+                    total_edges += len(results.edges)
+                    log.info(
+                        "Graph extraction episode %d/%d: %d nodes, %d edges",
+                        i + 1,
+                        total_episodes,
+                        len(results.nodes),
+                        len(results.edges),
+                    )
+                    succeeded = True
+                    break
+                except RateLimitError:
+                    if attempt < max_retries:
+                        log.warning(
+                            "Rate limit hit for episode %d/%d (attempt %d/%d). "
+                            "Waiting %ds before retry...",
+                            i + 1,
+                            total_episodes,
+                            attempt,
+                            max_retries,
+                            retry_delay,
+                        )
+                        await asyncio.sleep(retry_delay)
+                    else:
+                        log.error(
+                            "Rate limit hit for episode %d/%d — all %d attempts exhausted (non-fatal)",
+                            i + 1,
+                            total_episodes,
+                            max_retries,
+                        )
+                except Exception:
+                    log.exception(
+                        "Graph extraction failed for episode %d/%d (non-fatal)", i + 1, total_episodes
+                    )
+                    break  # non-rate-limit errors don't retry
+
+            if not succeeded:
                 failed += 1
 
         summary = {

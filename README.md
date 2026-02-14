@@ -73,7 +73,7 @@ sequenceDiagram
     P->>V: upsert(chunks, vectors)
 
     opt --graph flag enabled
-        P->>G: add_document(doc) → split into ~100K char episodes
+        P->>G: add_document(doc) → split into ~50K char episodes
         loop Each episode
             G->>L: Extract entities & relations (Haiku)
             L-->>G: Entities, edges, communities
@@ -361,11 +361,13 @@ Knowledge graph extraction uses [Graphiti](https://github.com/getzep/graphiti) t
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `graph.episode_size` | `100000` | Max chars per Graphiti episode (~25K tokens). Large documents are automatically split. |
-| `graph.max_coroutines` | `3` | Max parallel LLM calls inside Graphiti. Default of 20 is too aggressive for API rate limits. |
-| `graph.episode_delay` | `15` | Seconds to pause between episodes for rate limit cooldown. |
+| `graph.episode_size` | `50000` | Max chars per Graphiti episode (~12.5K tokens). Large documents are automatically split. |
+| `graph.max_coroutines` | `1` | Fully sequential LLM calls inside Graphiti. Default of 20 is too aggressive for API rate limits. |
+| `graph.episode_delay` | `30` | Seconds to pause between episodes for rate limit cooldown. |
+| `graph.max_episode_retries` | `3` | Retries per episode when Graphiti exhausts its internal retries on rate limits. |
+| `graph.episode_retry_delay` | `90` | Seconds to wait before retrying a rate-limited episode. |
 
-Even with throttled concurrency, Graphiti makes many internal LLM calls per episode (entity extraction, deduplication, edge extraction, community detection). Expect some rate limit retries on large documents — Graphiti's built-in exponential backoff handles these automatically.
+Each episode triggers ~22 internal LLM calls (entity extraction, deduplication, edge extraction, community detection). Graphiti has built-in exponential backoff (4 attempts, 5–120s). If all internal retries fail, the pipeline waits `episode_retry_delay` seconds and retries the entire episode up to `max_episode_retries` times.
 
 ## Key Design Decisions
 
